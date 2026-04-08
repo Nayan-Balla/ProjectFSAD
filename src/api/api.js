@@ -57,6 +57,12 @@ const getCourseIdFromName = (course) => {
   return String((hash % 9000) + 1000).padStart(4, "0");
 };
 
+const clampMarks = (value) => {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(1, Math.min(100, n));
+};
+
 export const registerUser = async (userData) => {
   try {
     const payload = await request("/api/auth/register", {
@@ -177,6 +183,15 @@ export const addRegistration = async (registration) => {
   return payload;
 };
 
+export const updateProfile = async (userId, data) => {
+  const payload = await request(`/api/users/${userId}`, {
+    method: "PUT",
+    requireAuth: true,
+    body: data,
+  });
+  return payload;
+};
+
 export const getSubmissions = async () => {
   const payload = await request("/api/submissions", { requireAuth: true });
   return Array.isArray(payload)
@@ -216,12 +231,13 @@ export const submitAssignment = async (submissionData) => {
 };
 
 export const updateSubmissionMarks = async (submission, marks, gradedBy) => {
+  const safeMarks = clampMarks(marks);
   const payload = await request(`/api/submissions/${submission.id}`, {
     method: "PUT",
     requireAuth: true,
     body: {
       ...submission,
-      marks,
+      marks: safeMarks,
       gradedBy,
       markedAt: new Date().toISOString(),
     },
