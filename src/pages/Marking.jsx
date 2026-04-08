@@ -71,7 +71,7 @@ function Marking() {
           View all student submissions, enter or update marks, and analyze learning outcomes. Your name is recorded as the grader.
         </p>
         <p className="page-subtitle">
-          Submission reads and creates are connected to Spring Boot. Marks you enter here are kept locally until the backend exposes an update endpoint.
+          Submissions and marks are saved to the Spring Boot backend. Make sure the backend is running at http://localhost:2020.
         </p>
         {error && <p className="dashboard-empty">{error}</p>}
 
@@ -181,7 +181,9 @@ function Marking() {
                   </td>
                   <td>
                     <input
-                      type="text"
+                      type="number"
+                      min="1"
+                      max="100"
                       className="marks-input"
                       placeholder="Enter marks"
                       value={row.marks ?? ""}
@@ -231,17 +233,19 @@ function Marking() {
                       <td>
                         <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
                       </td>
-                      <td>
-                        <input
-                          type="text"
-                          className="marks-input"
-                          placeholder="Enter marks"
-                          value={row.marks ?? ""}
-                          onChange={(e) => updateMarks(row.id, e.target.value, graderLabel)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                    <td>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        className="marks-input"
+                        placeholder="Enter marks"
+                        value={row.marks ?? ""}
+                        onChange={(e) => updateMarks(row.id, e.target.value, graderLabel)}
+                      />
+                    </td>
+                  </tr>
+                ))}
                 </tbody>
               </table>
             </div>

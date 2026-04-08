@@ -4,17 +4,20 @@ const AuthContext = createContext(null);
 
 const STORAGE_KEY = "sms_auth";
 
-const normalizeUser = (input) => {
-  if (!input || !input.role) return null;
+const normalizeUser = (input, fallback = null) => {
+  if (!input) return null;
+  const base = fallback || {};
+  const role = input.role || base.role;
+  if (!role) return null;
   return {
-    id: input.id ?? null,
-    role: input.role,
-    email: input.email || "",
-    name: input.name || "",
-    department: input.department || "",
-    photo: input.photo || "",
-    experience: input.experience || 0,
-    token: input.token || "",
+    id: input.id ?? base.id ?? null,
+    role,
+    email: input.email || base.email || "",
+    name: input.name || base.name || "",
+    department: input.department || base.department || "",
+    photo: input.photo || base.photo || "",
+    experience: input.experience ?? base.experience ?? 0,
+    token: input.token || base.token || "",
   };
 };
 
@@ -50,7 +53,7 @@ export function AuthProvider({ children }) {
   const updateProfile = (updates) => {
     setUser((prev) => {
       if (!prev) return prev;
-      const next = normalizeUser({ ...prev, ...updates });
+      const next = normalizeUser({ ...prev, ...updates }, prev);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
