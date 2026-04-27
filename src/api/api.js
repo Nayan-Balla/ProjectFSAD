@@ -1,7 +1,7 @@
 import { clampMarks, normalizeSubmission } from "../utils/submissions";
 
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "https://projectfsad-backend-4b0e.onrender.com"
+  import.meta.env.VITE_API_BASE_URL || "https://projectfsad-backend-f4ni.onrender.com"
 ).replace(/\/+$/, "");
 const AUTH_STORAGE_KEY = "sms_auth";
 const LOCAL_DB_KEY = "sms_local_db";
