@@ -3,12 +3,17 @@ import MainLayout from "../layout/MainLayout";
 import { useSubmissions } from "../context/SubmissionsContext";
 import { useAuth } from "../context/AuthContext";
 import FileViewDownload from "../components/FileViewDownload";
+import { formatMark } from "../utils/submissions";
 
 function isToday(timestamp) {
   if (!timestamp) return false;
-  const d = new Date(timestamp);
+  const date = new Date(timestamp);
   const today = new Date();
-  return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  );
 }
 
 function Marking() {
@@ -17,15 +22,18 @@ function Marking() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
   const [selectedIdNumber, setSelectedIdNumber] = useState(null);
+  const [markDrafts, setMarkDrafts] = useState({});
+  const [savingMarks, setSavingMarks] = useState({});
 
   const graderLabel = user?.name || user?.email || "Faculty";
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:2121";
 
   const visibleSubmissions = useMemo(() => submissions, [submissions]);
 
   const courseOptions = useMemo(() => {
     const courseSet = new Set();
-    visibleSubmissions.forEach((s) => {
-      if (s.course) courseSet.add(s.course);
+    visibleSubmissions.forEach((submission) => {
+      if (submission.course) courseSet.add(submission.course);
     });
     return Array.from(courseSet).sort();
   }, [visibleSubmissions]);
@@ -38,30 +46,92 @@ function Marking() {
 
   const courseFilteredSubmissions = useMemo(() => {
     if (!selectedCourse) return visibleSubmissions;
-    return visibleSubmissions.filter((s) => s.course === selectedCourse);
+    return visibleSubmissions.filter((submission) => submission.course === selectedCourse);
   }, [visibleSubmissions, selectedCourse]);
 
   const todaySubmissions = useMemo(
-    () => courseFilteredSubmissions.filter((s) => isToday(s.submittedAt)),
+    () => courseFilteredSubmissions.filter((submission) => isToday(submission.submittedAt)),
     [courseFilteredSubmissions]
   );
 
   const filteredSubmissions = useMemo(() => {
     if (!searchQuery.trim()) return courseFilteredSubmissions;
-    const q = searchQuery.trim().toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
     return courseFilteredSubmissions.filter(
-      (s) =>
-        (s.name && s.name.toLowerCase().includes(q)) ||
-        (s.idNumber && String(s.idNumber).toLowerCase().includes(q))
+      (submission) =>
+        (submission.name && submission.name.toLowerCase().includes(query)) ||
+        (submission.idNumber && String(submission.idNumber).toLowerCase().includes(query))
     );
   }, [courseFilteredSubmissions, searchQuery]);
 
   const selectedStudentSubmissions = useMemo(() => {
     if (!selectedIdNumber) return [];
-    return courseFilteredSubmissions.filter((s) => s.idNumber === selectedIdNumber);
+    return courseFilteredSubmissions.filter((submission) => submission.idNumber === selectedIdNumber);
   }, [courseFilteredSubmissions, selectedIdNumber]);
 
   const selectedStudentName = selectedStudentSubmissions[0]?.name || selectedIdNumber;
+
+  const getMarkInputValue = (row) => {
+    const draft = markDrafts[row.id];
+    if (draft !== undefined) return draft;
+    return row.marks ?? "";
+  };
+
+  const handleMarkChange = (id, value) => {
+    const sanitized = value.replace(/[^\d]/g, "").slice(0, 3);
+    setMarkDrafts((prev) => ({ ...prev, [id]: sanitized }));
+  };
+
+  const saveMark = async (row) => {
+    const rawValue = markDrafts[row.id];
+    if (rawValue === undefined) return;
+
+    const trimmed = String(rawValue).trim();
+    if (trimmed === "") return;
+
+    const numeric = Number.parseInt(trimmed, 10);
+    if (!Number.isFinite(numeric)) return;
+
+    const bounded = Math.max(0, Math.min(100, numeric));
+    setSavingMarks((prev) => ({ ...prev, [row.id]: true }));
+
+    try {
+      await updateMarks(row.id, bounded, graderLabel);
+      setMarkDrafts((prev) => {
+        const next = { ...prev };
+        delete next[row.id];
+        return next;
+      });
+    } finally {
+      setSavingMarks((prev) => {
+        const next = { ...prev };
+        delete next[row.id];
+        return next;
+      });
+    }
+  };
+
+  const handleMarkKeyDown = async (event, row) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      await saveMark(row);
+    }
+  };
+
+  const renderMarksInput = (row) => (
+    <input
+      type="number"
+      min="0"
+      max="100"
+      className="marks-input"
+      placeholder="Enter marks"
+      value={getMarkInputValue(row)}
+      onChange={(event) => handleMarkChange(row.id, event.target.value)}
+      onBlur={() => saveMark(row)}
+      onKeyDown={(event) => handleMarkKeyDown(event, row)}
+      disabled={Boolean(savingMarks[row.id])}
+    />
+  );
 
   return (
     <MainLayout>
@@ -71,12 +141,12 @@ function Marking() {
           View all student submissions, enter or update marks, and analyze learning outcomes. Your name is recorded as the grader.
         </p>
         <p className="page-subtitle">
-          Submissions and marks are saved to the Spring Boot backend. Make sure the backend is running at http://localhost:2020.
+          Submissions and marks are saved to the Spring Boot backend. Make sure the backend is running at {apiBaseUrl}.
         </p>
         {error && <p className="dashboard-empty">{error}</p>}
 
         <section className="marking-today">
-          <h2 className="marking-today__title">Today&apos;s submitted files</h2>
+          <h2 className="marking-today__title">Today's submitted files</h2>
           {isLoading ? (
             <p className="marking-today__empty">Loading submissions...</p>
           ) : todaySubmissions.length === 0 ? (
@@ -102,7 +172,7 @@ function Marking() {
                       <td>
                         <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
                       </td>
-                      <td>{row.marks || "-"}</td>
+                      <td>{formatMark(row.marks)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -144,7 +214,7 @@ function Marking() {
                 className="marking-search-input"
                 placeholder="Type name or ID number..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(event) => setSearchQuery(event.target.value)}
               />
             </div>
           </div>
@@ -179,17 +249,7 @@ function Marking() {
                   <td>
                     <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
                   </td>
-                  <td>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      className="marks-input"
-                      placeholder="Enter marks"
-                      value={row.marks ?? ""}
-                      onChange={(e) => updateMarks(row.id, e.target.value, graderLabel)}
-                    />
-                  </td>
+                  <td>{renderMarksInput(row)}</td>
                 </tr>
               ))}
             </tbody>
@@ -233,19 +293,9 @@ function Marking() {
                       <td>
                         <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
                       </td>
-                    <td>
-                      <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        className="marks-input"
-                        placeholder="Enter marks"
-                        value={row.marks ?? ""}
-                        onChange={(e) => updateMarks(row.id, e.target.value, graderLabel)}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                      <td>{renderMarksInput(row)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

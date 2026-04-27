@@ -5,6 +5,10 @@ import { useAuth } from "../context/AuthContext";
 import { verifyOtp, resendOtp, loginUser } from "../api/api";
 import "../assets/styles/auth.css";
 
+const PENDING_SIGNUP_KEY = "sms_pending_signup";
+const PENDING_VERIFICATION_EMAIL_KEY = "sms_pending_verification_email";
+const POST_VERIFY_MESSAGE_KEY = "sms_post_verify_message";
+
 function OtpVerification() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -17,8 +21,8 @@ function OtpVerification() {
   const [pendingSignup, setPendingSignup] = useState(null);
 
   useEffect(() => {
-    const pendingSignupRaw = sessionStorage.getItem("pendingSignup");
-    const pendingVerificationEmail = sessionStorage.getItem("pendingVerificationEmail");
+    const pendingSignupRaw = localStorage.getItem(PENDING_SIGNUP_KEY);
+    const pendingVerificationEmail = localStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY);
 
     if (!pendingSignupRaw && !pendingVerificationEmail) {
       navigate("/signup");
@@ -72,8 +76,8 @@ function OtpVerification() {
           }
 
           const loginData = loginResponse.data;
-          sessionStorage.removeItem("pendingSignup");
-          sessionStorage.removeItem("pendingVerificationEmail");
+          localStorage.removeItem(PENDING_SIGNUP_KEY);
+          localStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
 
           login({
             id: loginData.id,
@@ -97,8 +101,8 @@ function OtpVerification() {
         }
       }
 
-      sessionStorage.removeItem("pendingVerificationEmail");
-      sessionStorage.setItem("postVerifyMessage", "Email verified successfully. Please log in.");
+      localStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
+      localStorage.setItem(POST_VERIFY_MESSAGE_KEY, "Email verified successfully. Please log in.");
       navigate("/login");
     } catch (err) {
       setError("Network error. Please check your connection and try again.");

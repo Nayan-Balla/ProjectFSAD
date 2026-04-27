@@ -4,6 +4,7 @@ import MainLayout from "../layout/MainLayout";
 import { useSubmissions } from "../context/SubmissionsContext";
 import { useAuth } from "../context/AuthContext";
 import FileViewDownload from "../components/FileViewDownload";
+import { formatMark, hasAssignedMark } from "../utils/submissions";
 
 const LOW_MARK_THRESHOLD = 40;
 
@@ -14,22 +15,22 @@ function MyLearningOutcomes() {
   const mySubmissions = useMemo(
     () =>
       submissions.filter(
-        (s) => s.studentEmail && user?.email && s.studentEmail === user.email
+        (submission) => submission.studentEmail && user?.email && submission.studentEmail === user.email
       ),
     [submissions, user]
   );
 
   const { graded, pending, needImprovement } = useMemo(() => {
-    const graded = mySubmissions.filter((s) => s.marks && String(s.marks).trim());
-    const pending = mySubmissions.filter((s) => !s.marks || !String(s.marks).trim());
-    const withNumericMarks = graded.filter((s) => {
-      const num = parseFloat(String(s.marks).replace(/[^\d.]/g, ""), 10);
+    const gradedRows = mySubmissions.filter((submission) => hasAssignedMark(submission.marks));
+    const pendingRows = mySubmissions.filter((submission) => !hasAssignedMark(submission.marks));
+    const withNumericMarks = gradedRows.filter((submission) => {
+      const num = parseFloat(String(submission.marks).replace(/[^\d.]/g, ""), 10);
       return !Number.isNaN(num);
     });
-    const needImprovement = withNumericMarks.filter(
-      (s) => parseFloat(String(s.marks).replace(/[^\d.]/g, ""), 10) < LOW_MARK_THRESHOLD
+    const lowMarks = withNumericMarks.filter(
+      (submission) => parseFloat(String(submission.marks).replace(/[^\d.]/g, ""), 10) < LOW_MARK_THRESHOLD
     );
-    return { graded, pending, needImprovement };
+    return { graded: gradedRows, pending: pendingRows, needImprovement: lowMarks };
   }, [mySubmissions]);
 
   return (
@@ -40,7 +41,6 @@ function MyLearningOutcomes() {
           View your learning outcomes, monitor progress, and identify areas for improvement.
         </p>
 
-        {/* Monitor progress – summary */}
         <section className="outcomes-section outcomes-summary">
           <h2 className="outcomes-section__title">Monitor progress</h2>
           <div className="outcomes-summary__grid">
@@ -59,7 +59,6 @@ function MyLearningOutcomes() {
           </div>
         </section>
 
-        {/* Identify areas for improvement */}
         {needImprovement.length > 0 && (
           <section className="outcomes-section outcomes-improve">
             <h2 className="outcomes-section__title">Identify areas for improvement</h2>
@@ -67,16 +66,15 @@ function MyLearningOutcomes() {
               Submissions with marks below {LOW_MARK_THRESHOLD}. Consider reviewing feedback and improving in these areas.
             </p>
             <ul className="outcomes-improve__list">
-              {needImprovement.map((s) => (
-                <li key={s.id} className="outcomes-improve__item">
-                  <strong>{s.course}</strong> – {s.fileName || "Submission"} (Marks: {s.marks})
+              {needImprovement.map((submission) => (
+                <li key={submission.id} className="outcomes-improve__item">
+                  <strong>{submission.course}</strong> - {submission.fileName || "Submission"} (Marks: {submission.marks})
                 </li>
               ))}
             </ul>
           </section>
         )}
 
-        {/* View learning outcomes – full table */}
         <section className="outcomes-section">
           <h2 className="outcomes-section__title">View learning outcomes</h2>
           <p className="outcomes-section__desc">
@@ -105,7 +103,7 @@ function MyLearningOutcomes() {
                       <td>
                         <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
                       </td>
-                      <td><strong>{row.marks || "—"}</strong></td>
+                      <td><strong>{formatMark(row.marks)}</strong></td>
                       <td>{row.gradedBy || "—"}</td>
                       <td>
                         <Link to="/add-submission" className="outcomes-link">

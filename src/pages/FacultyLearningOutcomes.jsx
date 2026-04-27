@@ -4,6 +4,7 @@ import { useSubmissions } from "../context/SubmissionsContext";
 import { useRegistrations } from "../context/RegistrationsContext";
 import { useAuth } from "../context/AuthContext";
 import FileViewDownload from "../components/FileViewDownload";
+import { formatMark } from "../utils/submissions";
 
 function FacultyLearningOutcomes() {
   const { user } = useAuth();
@@ -14,7 +15,11 @@ function FacultyLearningOutcomes() {
   const facultyDepartment = useMemo(() => {
     if (user?.department) return user.department;
     const reg = registrations.find(
-      (r) => r.role === "Admin" && r.email && user?.email && r.email.toLowerCase() === user.email.toLowerCase()
+      (registration) =>
+        registration.role === "Admin" &&
+        registration.email &&
+        user?.email &&
+        registration.email.toLowerCase() === user.email.toLowerCase()
     );
     return reg?.department || "";
   }, [user, registrations]);
@@ -23,23 +28,23 @@ function FacultyLearningOutcomes() {
     const emails = new Set();
     registrations
       .filter(
-        (r) =>
-          r.role === "Student" &&
-          r.department &&
+        (registration) =>
+          registration.role === "Student" &&
+          registration.department &&
           facultyDepartment &&
-          r.department === facultyDepartment
+          registration.department === facultyDepartment
       )
-      .forEach((r) => {
-        if (r.email) emails.add(r.email.toLowerCase());
+      .forEach((registration) => {
+        if (registration.email) emails.add(registration.email.toLowerCase());
       });
     return emails;
   }, [registrations, facultyDepartment]);
 
   const departmentSubmissions = useMemo(() => {
-    return submissions.filter((s) => {
+    return submissions.filter((submission) => {
       if (!facultyDepartment) return false;
-      if (s.department) return s.department === facultyDepartment;
-      return s.studentEmail ? departmentStudentEmails.has(s.studentEmail.toLowerCase()) : false;
+      if (submission.department) return submission.department === facultyDepartment;
+      return submission.studentEmail ? departmentStudentEmails.has(submission.studentEmail.toLowerCase()) : false;
     });
   }, [submissions, departmentStudentEmails, facultyDepartment]);
 
@@ -47,11 +52,11 @@ function FacultyLearningOutcomes() {
     if (!searchQuery.trim()) return departmentSubmissions;
     const q = searchQuery.trim().toLowerCase();
     return departmentSubmissions.filter(
-      (s) =>
-        (s.name && s.name.toLowerCase().includes(q)) ||
-        (s.idNumber && String(s.idNumber).toLowerCase().includes(q)) ||
-        (s.studentEmail && s.studentEmail.toLowerCase().includes(q)) ||
-        (s.course && s.course.toLowerCase().includes(q))
+      (submission) =>
+        (submission.name && submission.name.toLowerCase().includes(q)) ||
+        (submission.idNumber && String(submission.idNumber).toLowerCase().includes(q)) ||
+        (submission.studentEmail && submission.studentEmail.toLowerCase().includes(q)) ||
+        (submission.course && submission.course.toLowerCase().includes(q))
     );
   }, [departmentSubmissions, searchQuery]);
 
@@ -84,7 +89,7 @@ function FacultyLearningOutcomes() {
         </div>
 
         <div className="dashboard-card">
-          <h2 className="faculty-outcomes-table-title">Student data & learning path</h2>
+          <h2 className="faculty-outcomes-table-title">Student data and learning path</h2>
           {departmentSubmissions.length === 0 ? (
             <p className="faculty-outcomes-empty">
               {facultyDepartment
@@ -116,7 +121,7 @@ function FacultyLearningOutcomes() {
                         <td>
                           <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
                         </td>
-                        <td><strong>{row.marks || "—"}</strong></td>
+                        <td><strong>{formatMark(row.marks)}</strong></td>
                         <td>{row.gradedBy || "—"}</td>
                       </tr>
                     ))}
@@ -125,13 +130,13 @@ function FacultyLearningOutcomes() {
               </div>
               {filteredSubmissions.length === 0 && searchQuery.trim() && (
                 <p className="faculty-outcomes-empty">
-                  No students match &quot;{searchQuery.trim()}&quot;.
+                  No students match "{searchQuery.trim()}".
                 </p>
               )}
               {filteredSubmissions.length > 0 && (
                 <p className="faculty-outcomes-count">
                   Showing {filteredSubmissions.length} submission{filteredSubmissions.length !== 1 ? "s" : ""}
-                  {searchQuery.trim() ? ` (filtered)` : ""}.
+                  {searchQuery.trim() ? " (filtered)" : ""}.
                 </p>
               )}
             </>

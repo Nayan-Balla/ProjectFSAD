@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { getSubmissions, submitAssignment, updateSubmissionMarks, deleteSubmission as deleteSubmissionApi } from "../api/api";
 import { useAuth } from "./AuthContext";
+import { hasAssignedMark } from "../utils/submissions";
 
 const SubmissionsContext = createContext(null);
 
@@ -55,8 +56,8 @@ export function SubmissionsProvider({ children }) {
             ? {
                 ...item,
                 marks,
-                gradedBy: marks && String(marks).trim() ? gradedBy : "",
-                markedAt: marks && String(marks).trim() ? Date.now() : null,
+                gradedBy: hasAssignedMark(marks) ? gradedBy : "",
+                markedAt: hasAssignedMark(marks) ? new Date().toISOString() : null,
               }
             : item
         );
@@ -66,10 +67,14 @@ export function SubmissionsProvider({ children }) {
         try {
           const updated = await updateSubmissionMarks(snapshot, marks, gradedBy);
           setSubmissions((prev) => prev.map((s) => (s.id === id ? updated : s)));
+          return updated;
         } catch (err) {
           setError(err.message || "Failed to save marks to server.");
+          throw err;
         }
       }
+
+      return null;
     },
     []
   );

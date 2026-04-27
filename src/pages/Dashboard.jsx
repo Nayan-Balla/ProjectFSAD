@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { useMemo } from "react";
 import { useSubmissions } from "../context/SubmissionsContext";
+import { hasAssignedMark } from "../utils/submissions";
 
 const MARK_RANGES = [
   { name: "90 & above", min: 90, max: 100, fill: "#059669" },
@@ -27,7 +28,7 @@ const MARK_RANGES = [
 ];
 
 function getMarkRangesData(submissions) {
-  const withMarks = submissions.filter((s) => s.marks && String(s.marks).trim());
+  const withMarks = submissions.filter((s) => hasAssignedMark(s.marks));
   const countByRange = MARK_RANGES.map((r) => ({ ...r, value: 0 }));
 
   withMarks.forEach((s) => {
@@ -46,7 +47,7 @@ function getMarkRangesData(submissions) {
 function Dashboard() {
   const { submissions } = useSubmissions();
   const totalSubmissions = submissions.length;
-  const withMarks = submissions.filter((s) => s.marks && String(s.marks).trim()).length;
+  const withMarks = submissions.filter((s) => hasAssignedMark(s.marks)).length;
   const notMarked = totalSubmissions - withMarks;
 
   const pieData = useMemo(() => getMarkRangesData(submissions), [submissions]);

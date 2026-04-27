@@ -4,6 +4,7 @@ import { useSubmissions } from "../context/SubmissionsContext";
 import { useRegistrations } from "../context/RegistrationsContext";
 import { useAuth } from "../context/AuthContext";
 import FileViewDownload from "../components/FileViewDownload";
+import { formatMark, hasAssignedMark } from "../utils/submissions";
 
 function Report() {
   const { user } = useAuth();
@@ -11,27 +12,30 @@ function Report() {
   const { registrations } = useRegistrations();
 
   const regCounts = useMemo(() => {
-    const students = registrations.filter((r) => r.role === "Student").length;
-    const admins = registrations.filter((r) => r.role === "Admin").length;
+    const students = registrations.filter((registration) => registration.role === "Student").length;
+    const admins = registrations.filter((registration) => registration.role === "Admin").length;
     const byDept = {};
     const facultyByDept = {};
-    registrations.forEach((r) => {
-      const d = r.department || "Not specified";
-      byDept[d] = (byDept[d] || 0) + 1;
-      if (r.role === "Admin") {
-        facultyByDept[d] = (facultyByDept[d] || 0) + 1;
+
+    registrations.forEach((registration) => {
+      const department = registration.department || "Not specified";
+      byDept[department] = (byDept[department] || 0) + 1;
+      if (registration.role === "Admin") {
+        facultyByDept[department] = (facultyByDept[department] || 0) + 1;
       }
     });
+
     const byDepartment = Object.entries(byDept)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
     const facultyByDepartment = Object.entries(facultyByDept)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
+
     return { students, admins, byDepartment, facultyByDepartment };
   }, [registrations]);
 
-  const withMarks = submissions.filter((s) => s.marks && String(s.marks).trim()).length;
+  const withMarks = submissions.filter((submission) => hasAssignedMark(submission.marks)).length;
   const isAdmin = user?.role === "Admin";
 
   return (
@@ -39,7 +43,7 @@ function Report() {
       <div className="report-page">
         <h1 className="report-title">Generate reports</h1>
         <p className="report-subtitle report-subtitle--lead">
-          Learning outcomes &amp; assessment reports. Track and evaluate educational effectiveness.
+          Learning outcomes and assessment reports. Track and evaluate educational effectiveness.
         </p>
 
         <section className="report-section report-section--public">
@@ -93,49 +97,47 @@ function Report() {
         </section>
 
         {isAdmin && (
-          <>
-            <section className="report-section">
-              <h2 className="report-section__title">Student outcome report (Admin)</h2>
-              <p className="report-subtitle">
-                Full list of submissions with student ID, name, course, file, and marks.
-              </p>
-              <div className="report-card">
-                <table className="edu-table report-table">
-                  <thead>
-                    <tr>
-                      <th>ID number</th>
-                      <th>Name</th>
-                      <th>Course</th>
-                      <th>File</th>
-                      <th>Marks</th>
-                      <th>Graded by</th>
+          <section className="report-section">
+            <h2 className="report-section__title">Student outcome report (Admin)</h2>
+            <p className="report-subtitle">
+              Full list of submissions with student ID, name, course, file, and marks.
+            </p>
+            <div className="report-card">
+              <table className="edu-table report-table">
+                <thead>
+                  <tr>
+                    <th>ID number</th>
+                    <th>Name</th>
+                    <th>Course</th>
+                    <th>File</th>
+                    <th>Marks</th>
+                    <th>Graded by</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.idNumber}</td>
+                      <td>{row.name}</td>
+                      <td>{row.course}</td>
+                      <td>
+                        <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
+                      </td>
+                      <td><strong>{formatMark(row.marks)}</strong></td>
+                      <td>{row.gradedBy || "—"}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {submissions.map((row) => (
-                      <tr key={row.id}>
-                        <td>{row.idNumber}</td>
-                        <td>{row.name}</td>
-                        <td>{row.course}</td>
-                        <td>
-                          <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
-                        </td>
-                        <td><strong>{row.marks || "—"}</strong></td>
-                        <td>{row.gradedBy || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {submissions.length === 0 && (
-                  <p className="report-empty">No submissions yet.</p>
-                )}
-              </div>
-              <div className="report-summary">
-                <p><strong>Total submissions:</strong> {submissions.length}</p>
-                <p><strong>Submissions with marks assigned:</strong> {withMarks}</p>
-              </div>
-            </section>
-          </>
+                  ))}
+                </tbody>
+              </table>
+              {submissions.length === 0 && (
+                <p className="report-empty">No submissions yet.</p>
+              )}
+            </div>
+            <div className="report-summary">
+              <p><strong>Total submissions:</strong> {submissions.length}</p>
+              <p><strong>Submissions with marks assigned:</strong> {withMarks}</p>
+            </div>
+          </section>
         )}
       </div>
     </MainLayout>

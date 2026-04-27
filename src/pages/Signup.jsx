@@ -1,15 +1,15 @@
 import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
-import { useAuth } from "../context/AuthContext";
 import { DEPARTMENTS } from "../constants/departments";
 import SimpleCaptcha from "../components/SimpleCaptcha";
 import { registerUser } from "../api/api";
 import "../assets/styles/auth.css";
 
+const PENDING_SIGNUP_KEY = "sms_pending_signup";
+
 function Signup() {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [role, setRole] = useState("Student");
   const [department, setDepartment] = useState(DEPARTMENTS[0]);
   const [experience, setExperience] = useState(0);
@@ -59,8 +59,8 @@ function Signup() {
       });
 
       if (response.success) {
-        // Store signup data temporarily for OTP verification
-        sessionStorage.setItem('pendingSignup', JSON.stringify({
+        // Persist signup data for OTP verification across refreshes/restarts
+        localStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify({
           name,
           email,
           password,
@@ -69,11 +69,6 @@ function Signup() {
           experience: exp
         }));
         
-        if (response.data?.otp) {
-          alert(`OTP generated for local testing: ${response.data.otp}`);
-          sessionStorage.setItem('debugOtp', response.data.otp);
-        }
-
         // Redirect to OTP verification
         navigate("/otp-verification");
       } else {

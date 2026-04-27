@@ -4,9 +4,10 @@ import { useSubmissions } from "../context/SubmissionsContext";
 import { useAuth } from "../context/AuthContext";
 import FileViewDownload from "../components/FileViewDownload";
 import "../assets/styles/auth.css";
+import { formatMark } from "../utils/submissions";
 
 function AddSubmission() {
-  const { addSubmission, submissions, deleteSubmission, isLoading, error } = useSubmissions();
+  const { addSubmission, submissions, deleteSubmission, refreshSubmissions, isLoading, error } = useSubmissions();
   const { user } = useAuth();
   const [course, setCourse] = useState("");
   const [idNumber, setIdNumber] = useState("");
@@ -16,9 +17,23 @@ function AddSubmission() {
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const mySubmissions = submissions.filter(
-    (s) => s.studentEmail && user?.email && s.studentEmail.toLowerCase() === user.email.toLowerCase()
-  );
+  const normalizedUserEmail = (user?.email || "").trim().toLowerCase();
+  const normalizedUserName = (user?.name || "").trim().toLowerCase();
+
+  const mySubmissions = submissions.filter((submission) => {
+    const submissionEmail = (submission.studentEmail || "").trim().toLowerCase();
+    const submissionName = (submission.name || submission.studentName || "").trim().toLowerCase();
+
+    if (submissionEmail && normalizedUserEmail) {
+      return submissionEmail === normalizedUserEmail;
+    }
+
+    if (!submissionEmail && submissionName && normalizedUserName) {
+      return submissionName === normalizedUserName;
+    }
+
+    return false;
+  });
 
   const resetForm = () => {
     setCourse("");
@@ -27,9 +42,10 @@ function AddSubmission() {
     setFile(null);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Delete this submission? This will only hide it in the frontend until the backend adds delete support.")) {
-      deleteSubmission(id);
+  const handleDelete = async (id) => {
+    if (window.confirm("Delete this submission? It will be removed from the database too.")) {
+      await deleteSubmission(id);
+      await refreshSubmissions();
     }
   };
 
@@ -48,6 +64,7 @@ function AddSubmission() {
         department: user?.department || "",
         fileData,
       });
+      await refreshSubmissions();
       resetForm();
       setSubmitted(true);
     } catch (err) {
@@ -174,7 +191,7 @@ function AddSubmission() {
                       <td>
                         <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
                       </td>
-                      <td><strong>{row.marks || "-"}</strong></td>
+                      <td><strong>{formatMark(row.marks)}</strong></td>
                       <td>{row.gradedBy || "-"}</td>
                       <td>
                         <button

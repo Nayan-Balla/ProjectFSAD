@@ -4,6 +4,7 @@ import { useSubmissions } from "../context/SubmissionsContext";
 import { useRegistrations } from "../context/RegistrationsContext";
 import MainLayout from "../layout/MainLayout";
 import FileViewDownload from "../components/FileViewDownload";
+import { formatMark, hasAssignedMark } from "../utils/submissions";
 
 function Profile() {
   const { user } = useAuth();
@@ -65,7 +66,7 @@ function Profile() {
   const photo = user?.photo || "";
 
   const totalSubmissions = mySubmissions.length;
-  const markedSubmissions = mySubmissions.filter((row) => row.marks && String(row.marks).trim()).length;
+  const markedSubmissions = mySubmissions.filter((row) => hasAssignedMark(row.marks)).length;
   const averageMark = mySubmissions
     .map((row) => parseFloat(String(row.marks).replace(/[^\d.]/g, "")))
     .filter((value) => !Number.isNaN(value))
@@ -196,7 +197,7 @@ function Profile() {
                       <td>
                         <FileViewDownload fileData={row.fileData} fileName={row.fileName} />
                       </td>
-                      <td>{row.marks || "—"}</td>
+                      <td>{formatMark(row.marks)}</td>
                       <td>{row.gradedBy || "—"}</td>
                       <td>{row.submittedAt ? new Date(row.submittedAt).toLocaleDateString() : "—"}</td>
                     </tr>

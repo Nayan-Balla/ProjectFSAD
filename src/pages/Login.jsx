@@ -6,6 +6,9 @@ import { loginUser } from "../api/api";
 import SimpleCaptcha from "../components/SimpleCaptcha";
 import "../assets/styles/auth.css";
 
+const POST_VERIFY_MESSAGE_KEY = "sms_post_verify_message";
+const PENDING_VERIFICATION_EMAIL_KEY = "sms_pending_verification_email";
+
 function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -18,10 +21,10 @@ function Login() {
   const captchaCodeRef = useRef("");
 
   useEffect(() => {
-    const message = sessionStorage.getItem("postVerifyMessage");
+    const message = localStorage.getItem(POST_VERIFY_MESSAGE_KEY);
     if (message) {
       setInfoMessage(message);
-      sessionStorage.removeItem("postVerifyMessage");
+      localStorage.removeItem(POST_VERIFY_MESSAGE_KEY);
     }
   }, []);
 
@@ -48,7 +51,7 @@ function Login() {
       if (!response.success) {
         const message = response.error || "Login failed. Please check your credentials.";
         if (message.toLowerCase().includes("verify your email")) {
-          sessionStorage.setItem("pendingVerificationEmail", email);
+          localStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, email);
           setLoginError("Your account is not verified yet. Enter the OTP to continue.");
           navigate("/otp-verification");
           return;

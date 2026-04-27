@@ -4,6 +4,7 @@ import MainLayout from "../layout/MainLayout";
 import { useSubmissions } from "../context/SubmissionsContext";
 import { useAuth } from "../context/AuthContext";
 import { BTECH_COURSES } from "../constants/btechCourses";
+import { hasAssignedMark } from "../utils/submissions";
 
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -46,7 +47,7 @@ function Courses() {
       const sorted = [...subs].sort((a, b) => (a.submittedAt || 0) - (b.submittedAt || 0));
       const firstTs = sorted[0]?.submittedAt;
       const lastTs = sorted[sorted.length - 1]?.submittedAt;
-      const graded = subs.filter((s) => s.marks && String(s.marks).trim()).length;
+      const graded = subs.filter((s) => hasAssignedMark(s.marks)).length;
       const total = subs.length;
       const progress = total > 0 ? Math.round((graded / total) * 100) : 0;
       const weeks = getDurationWeeks(firstTs, lastTs);
